@@ -10,7 +10,7 @@ font_size = 14  # Default font size
 text_position = "Top Left"  # Default position
 text_color = "red"  # Default text color
 
-# Use a standard font (make sure you have a valid TTF font in your system)
+# Use a standard font (make sure you have a valid TTF font on your system)
 font_path = "arial.ttf"  # You can change this to any TTF font on your system
 
 def choose_image():
@@ -24,8 +24,11 @@ def choose_image():
 def show_image():
     global pil_image, image_label
     if pil_image:
+        # Resize the image to 400x300
         img_resized = pil_image.resize((400, 300))
         tk_image = ImageTk.PhotoImage(img_resized)
+        
+        # Update the image in the label
         image_label.config(image=tk_image)
         image_label.image = tk_image
 
@@ -42,18 +45,24 @@ def add_text():
             # Fallback to default font if the specific font is not found
             font = ImageFont.load_default()
 
+        # Get text size to properly calculate position using textbbox (Bounding Box)
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+
         # Get text position based on user selection
         if text_position == "Top Left":
             position = (10, 10)
         elif text_position == "Top Right":
-            position = (pil_image.width - len(text) * font_size, 10)
+            position = (pil_image.width - text_width - 10, 10)
         elif text_position == "Bottom Left":
-            position = (10, pil_image.height - font_size - 10)
+            position = (10, pil_image.height - text_height - 10)
         elif text_position == "Bottom Right":
-            position = (pil_image.width - len(text) * font_size, pil_image.height - font_size - 10)
+            position = (pil_image.width - text_width - 10, pil_image.height - text_height - 10)
         elif text_position == "Center":
-            position = (pil_image.width // 2 - len(text) * font_size // 2, pil_image.height // 2 - font_size // 2)
-        
+            position = (pil_image.width // 2 - text_width // 2, pil_image.height // 2 - text_height // 2)
+
+        # Draw the text on the image
         draw.text(position, text, fill=text_color, font=font)
         show_image()
 
@@ -81,7 +90,6 @@ def update_position(val):
     global text_position
     text_position = val
 
-
 root = Tk()
 root.title("Adobe Photoshop 1bit")
 root.geometry("800x600")
@@ -95,10 +103,18 @@ right_frame.pack(side="right", padx=20, pady=20)
 center_frame = Frame(root, bg="#f4f4f4")
 center_frame.pack(side="left", padx=20, pady=20)
 
-# Add a label to display the image (centered in the left frame)
-image_label = Label(center_frame, bg="#f4f4f4")
-image_label.grid(row=0, column=0, pady=10)
+# Add a Canvas to draw a simple border (400x300) and place the image inside
+canvas = Canvas(center_frame, width=400, height=300, bg="lightgray", bd=2, relief="solid")
+canvas.grid(row=1, column=0, pady=10)
 
+# Нарисуем рамку вокруг изображения (обычный прямоугольник)
+canvas.create_rectangle(0, 0, 400, 300, outline="blue", width=4)
+
+# Add a label for image (inside the canvas)
+image_label = Label(canvas, bg="lightgray")
+image_label.place(x=0, y=0)  # Place image at the top-left corner of the canvas
+
+# Label for image
 label3 = Label(root, text="Picture:", font=("Helvetica", 18), fg="green", bg="lightgray")
 label3.place(x=20, y=100)
 
@@ -132,5 +148,5 @@ button2.grid(row=5, column=0, pady=10, padx=10)
 
 button3 = Button(right_frame, text="Save Photo", font=("Helvetica", 12, "bold"), bg="blue", fg="white", relief="solid", command=save_image)
 button3.grid(row=6, column=0, pady=10)
-
-root.mainloop()  
+#конец
+root.mainloop()
