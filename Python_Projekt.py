@@ -11,7 +11,8 @@ font_size = 14  # Default font size
 text_position = "Top Left"  # Default position
 text_color = "red"  # Default text color
 
-font_path = "arial.ttf"
+# Use a standard font (make sure you have a valid TTF font in your system)
+font_path = "arial.ttf"  # You can change this to any TTF font on your system
 
 def choose_image():
     global image_path, original_image, pil_image
@@ -25,19 +26,10 @@ def choose_image():
 def show_image():
     global pil_image, canvas
     if pil_image:
-        img_resized = pil_image.resize((600, 500))
+        img_resized = pil_image.resize((400, 300))
         tk_image = ImageTk.PhotoImage(img_resized)
-        
-        # Очистка canvas перед добавлением нового изображения
-        canvas.delete("all")
-        
-        # Нарисуем рамку вокруг изображения
-        canvas.create_rectangle(0, 0, 600, 500, outline="blue", width=4)
-        
-        # Добавляем изображение в центр canvas
-        canvas.image = tk_image  # Держим ссылку, чтобы изображение не удалилось из памяти
-        canvas.create_image(300, 250, image=tk_image, anchor="center")
-
+        image_label.config(image=tk_image)
+        image_label.image = tk_image
 
 def add_text():
     global pil_image
@@ -49,20 +41,20 @@ def add_text():
             font = ImageFont.truetype(font_path, font_size)
         except IOError:
             font = ImageFont.load_default()
+
+        # Get text position based on user selection
+        if text_position == "Top Left":
+            position = (10, 10)
+        elif text_position == "Top Right":
+            position = (pil_image.width - len(text) * font_size, 10)
+        elif text_position == "Bottom Left":
+            position = (10, pil_image.height - font_size - 10)
+        elif text_position == "Bottom Right":
+            position = (pil_image.width - len(text) * font_size, pil_image.height - font_size - 10)
+        elif text_position == "Center":
+            position = (pil_image.width // 2 - len(text) * font_size // 2, pil_image.height // 2 - font_size // 2)
         
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        
-        positions = {
-            "Top Left": (10, 10),
-            "Top Right": (pil_image.width - text_width - 10, 10),
-            "Bottom Left": (10, pil_image.height - text_height - 10),
-            "Bottom Right": (pil_image.width - text_width - 10, pil_image.height - text_height - 10),
-            "Center": (pil_image.width // 2 - text_width // 2, pil_image.height // 2 - text_height // 2)
-        }
-        
-        draw.text(positions[text_position], text, fill=text_color, font=font)
+        draw.text(position, text, fill=text_color, font=font)
         show_image()
 
 def save_image():
@@ -124,16 +116,17 @@ center_frame.pack(side="left", padx=20, pady=20)
 center_frame = Frame(root, bg="#f4f4f4")
 center_frame.pack(side="left", padx=20, pady=20)
 
-# Add a Canvas to draw a simple border (400x300) and place the image inside
-canvas = Canvas(center_frame, width=600, height=500, bg="lightgray", bd=2, relief="solid")
-canvas.grid(row=1, column=0, pady=10)
-
-# Нарисуем рамку вокруг изображения (обычный прямоугольник)
-canvas.create_rectangle(0, 0, 600, 500, outline="blue", width=4)
-
+# Add a label to display the image (centered in the left frame)
 image_label = Label(center_frame, bg="#f4f4f4")
 image_label.grid(row=0, column=0, pady=10)
 
+label3 = Label(root, text="Picture:", font=("Helvetica", 18), fg="green", bg="lightgray")
+label3.place(x=20, y=100)
+
+label4 = Label(root, text="TEXT:", font=("Helvetica", 18), fg="green", bg="lightgray")
+label4.place(x=1700, y=280)
+
+# Text entry field with some enhancements
 text_entry = Entry(right_frame, font=("Helvetica", 14), bd=2, relief="solid", width=20, justify="center")
 text_entry.grid(row=0, column=0, pady=10, padx=10)
 
@@ -157,9 +150,4 @@ button2.grid(row=5, column=0, pady=10, padx=10)
 button3 = Button(right_frame, text="Save Photo", font=("Helvetica", 12, "bold"), bg="blue", fg="white", relief="solid", command=save_image)
 button3.grid(row=6, column=0, pady=10)
 
-filter_var = StringVar(right_frame, "None")
-filter_menu = OptionMenu(right_frame, filter_var, "None", "BLUR", "CONTOUR", "DETAIL", "EDGE_ENHANCE", "EMBOSS", "SHARPEN", "SMOOTH", "FIND_EDGES", command=apply_filter)
-filter_menu.grid(row=7, column=0, pady=10, padx=10)
-
-
-root.mainloop()
+root.mainloop()  
