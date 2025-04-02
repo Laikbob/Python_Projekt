@@ -56,7 +56,7 @@ def add_text():
         
         draw.text(position, text, fill=text_color, font=font)
         show_image()
-
+# 
 def save_image():
     global pil_image
     if pil_image:
