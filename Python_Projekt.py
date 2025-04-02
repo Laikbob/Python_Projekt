@@ -2,96 +2,104 @@ from tkinter import *
 from tkinter import filedialog, colorchooser
 from PIL import Image, ImageTk, ImageDraw, ImageFont, ImageFilter
 
-image_label = None
-text_entry = None
 image_path = None
-original_image = None  # Храним оригинальное изображение
-pil_image = None  # Текущее изменённое изображение
-font_size = 14  # Default font size
-text_position = "Top Left"  # Default position
-text_color = "red"  # Default text color
-
-# Use a standard font (make sure you have a valid TTF font in your system)
-font_path = "arial.ttf"  # You can change this to any TTF font on your system
+original_image = None  # Исходное изображение
+edited_image = None  # Изображение с текстом
+current_image = None  # Отображаемое изображение (с фильтром)
+font_size = 14
+text_position = "Center"
+text_color = "red"
+font_path = "arial.ttf"
+text_entries = []  # Список всех добавленных текстов
 
 def choose_image():
-    global image_path, original_image, pil_image
+    global image_path, original_image, edited_image, current_image, text_entries
     file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
     if file_path:
         image_path = file_path
-        original_image = Image.open(file_path)  # Сохраняем оригинал
-        pil_image = original_image.copy()
+        original_image = Image.open(file_path)
+        edited_image = original_image.copy()
+        current_image = edited_image.copy()
+        text_entries = []  # Очистка списка текстов при загрузке нового изображения
         show_image()
 
 def show_image():
-    global pil_image, canvas
-    if pil_image:
-        img_resized = pil_image.resize((400, 300))
+    global current_image, canvas
+    if current_image:
+        img_resized = current_image.resize((600, 500))
         tk_image = ImageTk.PhotoImage(img_resized)
-        image_label.config(image=tk_image)
-        image_label.image = tk_image
+        canvas.delete("all")
+        canvas.create_rectangle(0, 0, 600, 500, outline="blue", width=4)
+        canvas.image = tk_image
+        canvas.create_image(300, 250, image=tk_image, anchor="center")
 
 def add_text():
-    global pil_image
-    if pil_image:
+    global edited_image, current_image, text_entries
+    if original_image:
         text = text_entry.get()
-        draw = ImageDraw.Draw(pil_image)
-        
+        if text:
+            text_entries.append((text, text_position, text_color, font_size))
+            redraw_texts()
+
+def redraw_texts():
+    global edited_image, current_image, text_entries
+    edited_image = original_image.copy()
+    draw = ImageDraw.Draw(edited_image)
+    for text, position, color, size in text_entries:
         try:
-            font = ImageFont.truetype(font_path, font_size)
+            font = ImageFont.truetype(font_path, size)
         except IOError:
             font = ImageFont.load_default()
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        positions = {
+            "Top Left": (10, 10),
+            "Top Right": (edited_image.width - text_width - 10, 10),
+            "Bottom Left": (10, edited_image.height - text_height - 10),
+            "Bottom Right": (edited_image.width - text_width - 10, edited_image.height - text_height - 10),
+            "Center": (edited_image.width // 2 - text_width // 2, edited_image.height // 2 - text_height // 2)
+        }
+        draw.text(positions[position], text, fill=color, font=font)
+    current_image = edited_image.copy()
+    show_image()
 
-        # Get text position based on user selection
-        if text_position == "Top Left":
-            position = (10, 10)
-        elif text_position == "Top Right":
-            position = (pil_image.width - len(text) * font_size, 10)
-        elif text_position == "Bottom Left":
-            position = (10, pil_image.height - font_size - 10)
-        elif text_position == "Bottom Right":
-            position = (pil_image.width - len(text) * font_size, pil_image.height - font_size - 10)
-        elif text_position == "Center":
-            position = (pil_image.width // 2 - len(text) * font_size // 2, pil_image.height // 2 - font_size // 2)
-        
-        draw.text(position, text, fill=text_color, font=font)
+def remove_texts():
+    global text_entries, edited_image, current_image
+    text_entries = []
+    redraw_texts()
+
+def apply_filter(filter_name):
+    global current_image, edited_image
+    if edited_image:
+        current_image = edited_image.copy()
+        filters = {
+            "BLUR": ImageFilter.BLUR,
+            "CONTOUR": ImageFilter.CONTOUR,
+            "DETAIL": ImageFilter.DETAIL,
+            "EDGE_ENHANCE": ImageFilter.EDGE_ENHANCE,
+            "EMBOSS": ImageFilter.EMBOSS,
+            "SHARPEN": ImageFilter.SHARPEN,
+            "SMOOTH": ImageFilter.SMOOTH,
+            "FIND_EDGES": ImageFilter.FIND_EDGES,
+        }
+        if filter_name in filters:
+            current_image = current_image.filter(filters[filter_name])
         show_image()
-# 
+
 def save_image():
-    global pil_image
-    if pil_image:
-        save_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Files", "*.png"), ("JPEG Files", "*.jpg")])
+    global current_image
+    if current_image:
+        save_path = filedialog.asksaveasfilename(defaultextension=".png",
+                                                 filetypes=[("PNG Files", "*.png"), ("JPEG Files", "*.jpg")])
         if save_path:
-            pil_image.save(save_path)
-            print("Image saved successfully!")
+            current_image.save(save_path)
 
 def choose_color():
     global text_color
     color = colorchooser.askcolor()[1]
     if color:
         text_color = color
-
-def apply_filter(filter_name):
-    global pil_image, original_image
-    if original_image:
-        pil_image = original_image.copy()  # Reset to original before applying filter
-        if filter_name == "BLUR":
-            pil_image = pil_image.filter(ImageFilter.BLUR)
-        elif filter_name == "CONTOUR":
-            pil_image = pil_image.filter(ImageFilter.CONTOUR)
-        elif filter_name == "DETAIL":
-            pil_image = pil_image.filter(ImageFilter.DETAIL)
-        elif filter_name == "EDGE_ENHANCE":
-            pil_image = pil_image.filter(ImageFilter.EDGE_ENHANCE)
-        elif filter_name == "EMBOSS":
-            pil_image = pil_image.filter(ImageFilter.EMBOSS)
-        elif filter_name == "SHARPEN":
-            pil_image = pil_image.filter(ImageFilter.SHARPEN)
-        elif filter_name == "SMOOTH":
-            pil_image = pil_image.filter(ImageFilter.SMOOTH)
-        elif filter_name == "FIND_EDGES":
-            pil_image = pil_image.filter(ImageFilter.FIND_EDGES)
-        show_image()
 
 def update_font_size(val):
     global font_size
@@ -101,53 +109,52 @@ def update_position(val):
     global text_position
     text_position = val
 
+def remove_image():
+    global original_image, edited_image, current_image, image_path, text_entries
+    original_image = None
+    edited_image = None
+    current_image = None
+    image_path = None
+    text_entries = []
+    canvas.delete("all")
+
 root = Tk()
-root.title("Adobe Photoshop 1bit")
-root.geometry("800x600")
-root.config(bg="#f4f4f4")
+root.title("Image Editor")
+root.geometry("1000x600")
 
-right_frame = Frame(root, bg="#f4f4f4", padx=20, pady=20)
-right_frame.pack(side="right", padx=20, pady=20)
+left_frame = Frame(root, bg="#2c3e50", padx=20, pady=20)
+left_frame.pack(side="left", fill="y")
+
+right_frame = Frame(root, bg="#ecf0f1", padx=20, pady=20)
+right_frame.pack(side="right", fill="y")
 
 center_frame = Frame(root, bg="#f4f4f4")
-center_frame.pack(side="left", padx=20, pady=20)
+center_frame.pack(expand=True)
 
-# Create a Frame to display the image in the center
-center_frame = Frame(root, bg="#f4f4f4")
-center_frame.pack(side="left", padx=20, pady=20)
+canvas = Canvas(center_frame, width=600, height=500, bg="lightgray", bd=2, relief="solid")
+canvas.pack()
 
-# Add a label to display the image (centered in the left frame)
-image_label = Label(center_frame, bg="#f4f4f4")
-image_label.grid(row=0, column=0, pady=10)
+Button(left_frame, text="Add Image", font=("Arial", 12), bg="#3498db", fg="white", command=choose_image).pack(fill="x", pady=5)
+Button(left_frame, text="Add Text", font=("Arial", 12), bg="#3498db", fg="white", command=add_text).pack(fill="x", pady=5)
+Button(left_frame, text="Remove Texts", font=("Arial", 12), bg="#e67e22", fg="white", command=remove_texts).pack(fill="x", pady=5)
+Button(left_frame, text="Save Photo", font=("Arial", 12), bg="#3498db", fg="white", command=save_image).pack(fill="x", pady=5)
+Button(left_frame, text="Remove Image", font=("Arial", 12), bg="#c0392b", fg="white", command=remove_image).pack(fill="x", pady=5)
 
-label3 = Label(root, text="Picture:", font=("Helvetica", 18), fg="green", bg="lightgray")
-label3.place(x=20, y=100)
+filter_var = StringVar(left_frame, "None")
+filter_menu = OptionMenu(left_frame, filter_var, "None", "BLUR", "CONTOUR", "DETAIL", "EDGE_ENHANCE", "EMBOSS", "SHARPEN", "SMOOTH", "FIND_EDGES", command=apply_filter)
+filter_menu.pack(fill="x", pady=5)
 
-label4 = Label(root, text="TEXT:", font=("Helvetica", 18), fg="green", bg="lightgray")
-label4.place(x=1700, y=280)
+Label(right_frame, text="Text:", font=("Arial", 14), bg="#ecf0f1").pack()
+text_entry = Entry(right_frame, font=("Arial", 14), width=20)
+text_entry.pack(pady=5)
 
-# Text entry field with some enhancements
-text_entry = Entry(right_frame, font=("Helvetica", 14), bd=2, relief="solid", width=20, justify="center")
-text_entry.grid(row=0, column=0, pady=10, padx=10)
-
-font_size_scale = Scale(right_frame, from_=10, to_=100, orient="horizontal", label="Font Size", command=update_font_size, bg="#f4f4f4")
+font_size_scale = Scale(right_frame, from_=10, to_=100, orient="horizontal", command=update_font_size)
 font_size_scale.set(14)
-font_size_scale.grid(row=1, column=0, pady=10, padx=10)
+font_size_scale.pack()
 
-position_var = StringVar(right_frame, "Center")
-position_menu = OptionMenu(right_frame, position_var, "Top Left", "Top Right", "Bottom Left", "Bottom Right", "Center", command=update_position)
-position_menu.grid(row=2, column=0, pady=10, padx=10)
+position_menu = OptionMenu(right_frame, StringVar(right_frame, "Center"), "Top Left", "Top Right", "Bottom Left", "Bottom Right", "Center", command=update_position)
+position_menu.pack()
 
-color_button = Button(right_frame, text="Choose Text Color", font=("Helvetica", 12, "bold"), bg="green", fg="white", relief="solid", command=choose_color)
-color_button.grid(row=3, column=0, pady=10)
+Button(right_frame, text="Choose Text Color", font=("Arial", 12), bg="#e74c3c", fg="white", command=choose_color).pack(fill="x", pady=5)
 
-button1 = Button(right_frame, text="ADD IMAGE", font=("Helvetica", 12, "bold"), bg="orange", fg="white", relief="solid", command=choose_image)
-button1.grid(row=4, column=0, pady=10, padx=10)
-
-button2 = Button(right_frame, text="ADD TEXT", font=("Helvetica", 12, "bold"), bg="yellow", fg="black", relief="solid", command=add_text)
-button2.grid(row=5, column=0, pady=10, padx=10)
-
-button3 = Button(right_frame, text="Save Photo", font=("Helvetica", 12, "bold"), bg="blue", fg="white", relief="solid", command=save_image)
-button3.grid(row=6, column=0, pady=10)
-
-root.mainloop()  
+root.mainloop()
